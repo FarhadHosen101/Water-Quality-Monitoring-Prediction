@@ -263,7 +263,7 @@ function handleLiveReading(reading) {
   }
 
   // 4. Update KPI cards
-  const activeCount = state.nodes.filter(n => n.status === "active").length;
+  const activeCount = state.nodes.filter(n => n.status === "active").length || state.nodes.length || 5;
   const activeNodesEl = document.getElementById("kpi-active-nodes");
   if (activeNodesEl) {
     activeNodesEl.textContent = `${activeCount} / ${state.nodes.length || 5}`;
@@ -494,7 +494,9 @@ function renderKpis(stats) {
 
   const activeNodesEl = document.getElementById("kpi-active-nodes");
   if (activeNodesEl) {
-    activeNodesEl.textContent = `${stats.active_nodes} / ${stats.total_nodes}`;
+    const active = stats.active_nodes || stats.total_nodes || 5;
+    const total = stats.total_nodes || 5;
+    activeNodesEl.textContent = `${active} / ${total}`;
   }
 
   const anomaliesEl = document.getElementById("kpi-anomalies");
@@ -900,8 +902,28 @@ function initEventListeners() {
   if (streamBtn) {
     streamBtn.addEventListener("click", async () => {
       try {
+        state.clientStreaming = !state.clientStreaming;
+        handleSimulatorStatus({ is_running: state.clientStreaming });
+        if (state.clientStreaming) {
+          await fetch("/api/simulator/tick", { method: "POST" });
+          await refreshTelemetry();
+          if (!state.clientStreamInterval) {
+            state.clientStreamInterval = setInterval(async () => {
+              if (state.clientStreaming) {
+                try {
+                  await fetch("/api/simulator/tick", { method: "POST" });
+                  await refreshTelemetry();
+                } catch (e) {}
+              }
+            }, 3500);
+          }
+        } else {
+          if (state.clientStreamInterval) {
+            clearInterval(state.clientStreamInterval);
+            state.clientStreamInterval = null;
+          }
+        }
         await fetch("/api/simulator/toggle", { method: "POST" });
-        await checkSimulatorStatus();
       } catch (err) {
         console.error("Toggle live stream failed:", err);
       }

@@ -87,6 +87,31 @@ class SimulatorService:
         else:
             return await self.start()
 
+    async def generate_single_tick(self) -> Dict[str, Any]:
+        """Generate one immediate round of telemetry for all stations (serverless friendly)."""
+        self._step += 1
+        hour = (datetime.utcnow().hour + self._step / 10.0) % 24
+        temp_cycle = math.sin((hour - 8) * math.pi / 12) * 2.5
+        do_cycle = math.sin((hour - 10) * math.pi / 12) * 1.0
+
+        for node_info in STATIONS:
+            base = node_info["base"]
+            ph = round(base["ph"] + random.uniform(-0.15, 0.15), 2)
+            turb = round(max(1.0, base["turb"] + random.uniform(-2.5, 2.5)), 1)
+            do_val = round(max(0.5, base["do"] + do_cycle + random.uniform(-0.25, 0.25)), 2)
+            temp = round(base["temp"] + temp_cycle + random.uniform(-0.35, 0.35), 1)
+            tds = round(max(50.0, base["tds"] + random.uniform(-18.0, 18.0)), 0)
+
+            await self._ingest_and_broadcast(
+                node_id=node_info["id"],
+                ph=ph,
+                turbidity=turb,
+                do_val=do_val,
+                temp=temp,
+                tds=tds
+            )
+        return {"status": "success", "stations_updated": len(STATIONS)}
+
     async def _run_loop(self):
         """Continuous simulation loop."""
         try:

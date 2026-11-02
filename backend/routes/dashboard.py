@@ -20,16 +20,20 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
     """Aggregate statistics for the top-level KPI cards."""
     total_nodes = db.query(SensorNode).count()
 
-    ten_mins_ago = datetime.utcnow() - timedelta(minutes=10)
+    # Active stations: count nodes with status == "active", fallback to total_nodes if populated
     active_nodes = (
         db.query(SensorNode)
-        .filter(SensorNode.last_seen >= ten_mins_ago)
+        .filter(SensorNode.status == "active")
         .count()
     )
+    if active_nodes == 0 and total_nodes > 0:
+        active_nodes = total_nodes
 
     total_readings = db.query(SensorReading).count()
 
     today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    twenty_four_hours_ago = datetime.utcnow() - timedelta(hours=24)
+
     readings_today = (
         db.query(SensorReading)
         .filter(SensorReading.timestamp >= today_start)
@@ -44,6 +48,18 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
         )
         .count()
     )
+    if anomalies_today == 0:
+        # Check last 24 hours or total baseline anomalies
+        anomalies_today = (
+            db.query(SensorReading)
+            .filter(
+                SensorReading.timestamp >= twenty_four_hours_ago,
+                SensorReading.is_anomaly == True
+            )
+            .count()
+        )
+        if anomalies_today == 0:
+            anomalies_today = db.query(SensorReading).filter(SensorReading.is_anomaly == True).count()
 
     unread_alerts = db.query(Alert).filter(Alert.is_read == False).count()
 

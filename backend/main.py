@@ -143,6 +143,12 @@ async def toggle_background_simulator():
     return await simulator_service.toggle()
 
 
+@app.post("/api/simulator/tick")
+async def trigger_simulator_tick():
+    """Trigger one immediate telemetry tick across all stations."""
+    return await simulator_service.generate_single_tick()
+
+
 @app.get("/api/simulator/status")
 def get_background_simulator_status():
     """Get current simulator running status and interval."""

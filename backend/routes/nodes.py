@@ -59,10 +59,8 @@ def get_nodes(db: Session = Depends(get_db)):
             .first()
         )
 
-        # Node is offline if not seen in last 10 minutes
-        current_status = node.status
-        if node.last_seen and node.last_seen < ten_mins_ago and node.status == "active":
-            current_status = "offline"
+        # Node status defaults to active unless explicitly configured otherwise
+        current_status = node.status or "active"
 
         results.append({
             "id": node.id,
