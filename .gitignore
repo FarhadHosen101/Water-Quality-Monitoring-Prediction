@@ -30,3 +30,10 @@ Thumbs.db
 *.swp
 *.swo
 .vercel
+
+# Local presentation & proposal documents (kept local only)
+system_architecture.png
+architecture_diagram.html
+Water_Quality_Monitoring_AI_Presentation.pdf
+AI_Water_Quality_Monitoring_Project_Proposal.pdf
+presentation_handbook.html

@@ -9,8 +9,6 @@
 An autonomous, cyber-physical environmental surveillance platform engineered for real-time water quality monitoring, multivariate chemical anomaly detection, and 24-hour predictive pollution forecasting.
 
 🌐 **Live Web Platform:** [https://project-ai-rust-mu.vercel.app](https://project-ai-rust-mu.vercel.app)  
-📄 **Academic Presentation PDF:** [Water_Quality_Monitoring_AI_Presentation.pdf](Water_Quality_Monitoring_AI_Presentation.pdf)  
-📑 **Project Research Proposal:** [AI_Water_Quality_Monitoring_Project_Proposal.pdf](AI_Water_Quality_Monitoring_Project_Proposal.pdf)  
 📊 **Curated Dataset (698 Samples):** [data/water_quality_dataset.csv](data/water_quality_dataset.csv)  
 
 ---
@@ -45,8 +43,6 @@ An autonomous, cyber-physical environmental surveillance platform engineered for
 ---
 
 ## 🏗️ System Architecture
-
-![AquaAI System Architecture](system_architecture.png)
 
 ### 3-Tier Decoupled Pipeline
 ```
@@ -101,8 +97,6 @@ An autonomous, cyber-physical environmental surveillance platform engineered for
 │   ├── diagram.json           # Wokwi virtual breadboard schematic
 │   └── sketch.ino             # Virtual ESP32 simulation sketch
 ├── water_quality_node.ino     # Production Arduino C++ firmware for physical ESP32
-├── system_architecture.png    # 4K UHD system architecture diagram
-├── Water_Quality_Monitoring_AI_Presentation.pdf # Complete academic defense handbook
 ├── requirements.txt           # Python dependencies
 ├── vercel.json                # Vercel cloud serverless deployment configuration
 ├── .env.example               # Template environment configuration
