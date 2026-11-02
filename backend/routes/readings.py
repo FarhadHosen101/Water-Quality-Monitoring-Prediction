@@ -14,6 +14,7 @@ from backend.models.database import SensorReading, SensorNode, Alert
 from backend.models.schemas import SensorReadingCreate, SensorReadingResponse
 from backend.utils.wqi import compute_wqi, check_thresholds, severity_from_wqi
 from backend.ml.engine import anomaly_detector
+from backend.websocket import ws_manager
 
 import os
 import logging
@@ -118,6 +119,25 @@ def create_reading(reading: SensorReadingCreate, db: Session = Depends(get_db),
 
     db.commit()
     db.refresh(db_reading)
+
+    # Broadcast live reading to connected WebSocket clients
+    ws_manager.broadcast_sync({
+        "type": "new_reading",
+        "data": {
+            "id": db_reading.id,
+            "node_id": reading.node_id,
+            "ph": reading.ph,
+            "turbidity": reading.turbidity,
+            "dissolved_oxygen": reading.do,
+            "temperature": reading.temp,
+            "tds": reading.tds,
+            "wqi": wqi_score,
+            "risk_level": risk_level,
+            "is_anomaly": is_anomaly,
+            "anomaly_score": anomaly_score,
+            "timestamp": db_reading.timestamp.isoformat() if db_reading.timestamp else datetime.utcnow().isoformat(),
+        }
+    })
 
     return {
         "id": db_reading.id,

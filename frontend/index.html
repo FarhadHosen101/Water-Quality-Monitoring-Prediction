@@ -29,9 +29,14 @@
     </div>
 
     <div class="nav-actions">
-      <div class="live-badge">
-        <span class="pulse-dot"></span>
-        <span data-i18n="live_badge">LIVE TELEMETRY</span>
+      <button id="btn-toggle-stream" class="btn btn-stream" title="Toggle automatic background IoT telemetry streaming">
+        <span id="stream-icon">▶️</span>
+        <span id="stream-btn-text">Start Live Stream</span>
+      </button>
+
+      <div class="live-badge" id="live-indicator-badge">
+        <span class="pulse-dot" id="ws-pulse-dot"></span>
+        <span id="ws-status-text" data-i18n="live_badge">LIVE TELEMETRY</span>
       </div>
 
       <button id="btn-toggle-lang" class="btn btn-secondary" title="Switch English / Bangla">বাং</button>

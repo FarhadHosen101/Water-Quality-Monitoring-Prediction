@@ -18,7 +18,9 @@ const state = {
   },
   lang: "en", // "en" | "bn"
   autoRefreshInterval: null,
-  lastTimestamps: {}
+  lastTimestamps: {},
+  ws: null,
+  isStreaming: false
 };
 
 // ── Translations Dictionary (Bangla & English) ───────────────────
@@ -40,7 +42,9 @@ const i18n = {
     alerts_title: "Real-time Alerts & Notifications",
     export_btn: "Export CSV",
     sim_btn: "Simulate Anomaly",
-    btn_predict: "Run AI Forecast"
+    btn_predict: "Run AI Forecast",
+    stream_start: "Start Live Stream",
+    stream_stop: "Live Streaming"
   },
   bn: {
     title: "অ্যাকুয়া-এআই",
@@ -59,7 +63,9 @@ const i18n = {
     alerts_title: "জরুরি সতর্কবার্তা ও নোটিফিকেশন",
     export_btn: "সিএসভি ডাউনলোড",
     sim_btn: "ত্রুটি সিমুলেট করুন",
-    btn_predict: "পূর্বাভাস দেখুন"
+    btn_predict: "পূর্বাভাস দেখুন",
+    stream_start: "লাইভ স্ট্রিম শুরু",
+    stream_stop: "লাইভ স্ট্রিম চলছে"
   }
 };
 
@@ -90,12 +96,230 @@ document.addEventListener("DOMContentLoaded", async () => {
   initEventListeners();
   await loadDashboardData();
   await loadLabBenchmarks();
+  initWebSocket();
+  await checkSimulatorStatus();
 
-  // Auto-refresh telemetry every 8 seconds
+  // Safety fallback polling every 12 seconds in case of network interruption
   state.autoRefreshInterval = setInterval(async () => {
     await refreshTelemetry();
-  }, 8000);
+  }, 12000);
 });
+
+// ── WebSocket Real-Time Telemetry Client ─────────────────────────
+function initWebSocket() {
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const wsUrl = `${protocol}//${window.location.host}/ws/telemetry`;
+
+  const pulseDot = document.getElementById("ws-pulse-dot");
+  const wsStatusText = document.getElementById("ws-status-text");
+
+  try {
+    const ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => {
+      console.log("⚡ AquaAI WebSocket connected to live telemetry stream");
+      if (pulseDot) pulseDot.classList.remove("ws-disconnected");
+      if (wsStatusText) wsStatusText.textContent = state.lang === "bn" ? "রিয়েল-টাইম লাইভ" : "REAL-TIME LIVE";
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === "new_reading") {
+          handleLiveReading(msg.data);
+        } else if (msg.type === "new_alert") {
+          handleLiveAlert(msg.data);
+        } else if (msg.type === "simulator_status") {
+          handleSimulatorStatus(msg.data);
+        }
+      } catch (e) {
+        console.error("Error parsing WS message:", e);
+      }
+    };
+
+    ws.onclose = () => {
+      console.warn("WebSocket disconnected. Retrying in 3s...");
+      if (pulseDot) pulseDot.classList.add("ws-disconnected");
+      if (wsStatusText) wsStatusText.textContent = state.lang === "bn" ? "পুনঃসংযোগ হচ্ছে..." : "RECONNECTING...";
+      setTimeout(initWebSocket, 3000);
+    };
+
+    ws.onerror = (err) => {
+      console.error("WebSocket error:", err);
+      ws.close();
+    };
+
+    state.ws = ws;
+  } catch (err) {
+    console.error("WebSocket init error:", err);
+    setTimeout(initWebSocket, 5000);
+  }
+}
+
+function handleLiveReading(reading) {
+  // 1. Update or insert node in state.nodes
+  let node = state.nodes.find(n => n.id === reading.node_id);
+  if (!node) {
+    node = {
+      id: reading.node_id,
+      name: reading.node_id,
+      location_name: "Station",
+      water_body_type: "waterway",
+      status: "active"
+    };
+    state.nodes.push(node);
+  }
+  node.latest_wqi = reading.wqi;
+  node.latest_risk = reading.risk_level;
+  node.is_anomaly = reading.is_anomaly;
+  node.status = "active";
+  node.last_seen = reading.timestamp;
+  node.latest_reading = {
+    ph: reading.ph,
+    turbidity: reading.turbidity,
+    dissolved_oxygen: reading.dissolved_oxygen,
+    temperature: reading.temperature,
+    tds: reading.tds,
+    timestamp: reading.timestamp
+  };
+
+  // 2. If this reading belongs to active selected station, update gauges & charts
+  if (reading.node_id === state.activeNodeId) {
+    document.getElementById("meter-ph").textContent = reading.ph ? reading.ph.toFixed(2) : "--";
+    document.getElementById("meter-turb").textContent = reading.turbidity ? reading.turbidity.toFixed(1) : "--";
+    document.getElementById("meter-do").textContent = reading.dissolved_oxygen ? reading.dissolved_oxygen.toFixed(2) : "--";
+    document.getElementById("meter-temp").textContent = reading.temperature ? reading.temperature.toFixed(1) : "--";
+    document.getElementById("meter-tds").textContent = reading.tds ? reading.tds.toFixed(0) : "--";
+
+    const wqiScoreEl = document.getElementById("station-wqi-score");
+    if (wqiScoreEl) {
+      wqiScoreEl.textContent = reading.wqi ? reading.wqi.toFixed(1) : "--";
+      wqiScoreEl.style.color = getRiskColor(reading.risk_level);
+    }
+
+    const badgeEl = document.getElementById("station-risk-badge");
+    if (badgeEl) {
+      badgeEl.textContent = reading.risk_level;
+      badgeEl.className = `badge-risk ${getRiskBadgeClass(reading.risk_level)}`;
+    }
+
+    setBarWidth("bar-ph", reading.ph ? (reading.ph / 14.0) * 100 : 50);
+    setBarWidth("bar-turb", reading.turbidity ? Math.min(100, (reading.turbidity / 50.0) * 100) : 20);
+    setBarWidth("bar-do", reading.dissolved_oxygen ? Math.min(100, (reading.dissolved_oxygen / 14.0) * 100) : 60);
+    setBarWidth("bar-temp", reading.temperature ? (reading.temperature / 40.0) * 100 : 60);
+    setBarWidth("bar-tds", reading.tds ? Math.min(100, (reading.tds / 1000.0) * 100) : 30);
+
+    renderRadarChart(reading);
+
+    // Smoothly push to live trend chart
+    if (state.charts.trends) {
+      const chart = state.charts.trends;
+      const t = new Date(reading.timestamp);
+      const timeStr = `${t.getHours().toString().padStart(2, "0")}:${t.getMinutes().toString().padStart(2, "0")}:${t.getSeconds().toString().padStart(2, "0")}`;
+
+      chart.data.labels.push(timeStr);
+      chart.data.datasets[0].data.push(reading.wqi);
+      chart.data.datasets[1].data.push(reading.ph);
+      chart.data.datasets[2].data.push(reading.dissolved_oxygen);
+      chart.data.datasets[3].data.push(reading.turbidity);
+
+      if (chart.data.labels.length > 25) {
+        chart.data.labels.shift();
+        chart.data.datasets.forEach(ds => ds.data.shift());
+      }
+      chart.update("none");
+    }
+  }
+
+  // 3. Update map marker styling
+  if (state.markers && state.markers[reading.node_id]) {
+    const color = getRiskColor(reading.risk_level);
+    const pulseRing = reading.is_anomaly
+      ? `<div style="position:absolute; width:34px; height:34px; border:2px solid #ef4444; border-radius:50%; animation:pulseAnimation 1.5s infinite; top:-7px; left:-7px;"></div>`
+      : "";
+    const customIcon = L.divIcon({
+      className: "custom-map-marker",
+      html: `
+        <div style="position:relative; width:20px; height:20px;">
+          ${pulseRing}
+          <div style="width:20px; height:20px; background-color:${color}; border:2px solid #ffffff; border-radius:50%; box-shadow:0 0 12px ${color};"></div>
+        </div>
+      `,
+      iconSize: [20, 20],
+      iconAnchor: [10, 10]
+    });
+    state.markers[reading.node_id].setIcon(customIcon);
+  }
+
+  // 4. Update KPI cards
+  const activeCount = state.nodes.filter(n => n.status === "active").length;
+  const activeNodesEl = document.getElementById("kpi-active-nodes");
+  if (activeNodesEl) {
+    activeNodesEl.textContent = `${activeCount} / ${state.nodes.length || 5}`;
+  }
+
+  if (reading.is_anomaly) {
+    const anomaliesEl = document.getElementById("kpi-anomalies");
+    if (anomaliesEl) {
+      const current = parseInt(anomaliesEl.textContent, 10) || 0;
+      anomaliesEl.textContent = current + 1;
+    }
+  }
+}
+
+function handleLiveAlert(alertData) {
+  const container = document.getElementById("alerts-container");
+  if (!container) return;
+
+  const timeStr = new Date(alertData.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const item = document.createElement("div");
+  item.className = `alert-item ${alertData.severity.toLowerCase()}`;
+  item.innerHTML = `
+    <div class="alert-content">
+      <div class="alert-top">
+        <span class="alert-node">Station: ${alertData.node_id}</span>
+        <span class="alert-time">${timeStr}</span>
+      </div>
+      <div class="alert-msg">${alertData.message}</div>
+    </div>
+  `;
+  container.insertBefore(item, container.firstChild);
+
+  const alertsKpi = document.getElementById("kpi-unread-alerts");
+  if (alertsKpi) {
+    const current = parseInt(alertsKpi.textContent, 10) || 0;
+    alertsKpi.textContent = current + 1;
+  }
+}
+
+function handleSimulatorStatus(status) {
+  state.isStreaming = status.is_running;
+  const streamBtn = document.getElementById("btn-toggle-stream");
+  const streamIcon = document.getElementById("stream-icon");
+  const streamText = document.getElementById("stream-btn-text");
+
+  if (streamBtn) {
+    if (status.is_running) {
+      streamBtn.classList.add("active");
+      if (streamIcon) streamIcon.textContent = "⏸️";
+      if (streamText) streamText.textContent = state.lang === "bn" ? "লাইভ স্ট্রিম চলছে" : "Live Streaming";
+    } else {
+      streamBtn.classList.remove("active");
+      if (streamIcon) streamIcon.textContent = "▶️";
+      if (streamText) streamText.textContent = state.lang === "bn" ? "লাইভ স্ট্রিম শুরু" : "Start Live Stream";
+    }
+  }
+}
+
+async function checkSimulatorStatus() {
+  try {
+    const res = await fetch("/api/simulator/status");
+    const status = await res.json();
+    handleSimulatorStatus(status);
+  } catch (err) {
+    console.error("Failed to check simulator status:", err);
+  }
+}
 
 // ── Leaflet GIS Map ──────────────────────────────────────────────
 function initMap() {
@@ -660,6 +884,19 @@ async function loadLabBenchmarks() {
 
 // ── Interactive Controls & Modals ────────────────────────────────
 function initEventListeners() {
+  // Live Stream Toggle Button
+  const streamBtn = document.getElementById("btn-toggle-stream");
+  if (streamBtn) {
+    streamBtn.addEventListener("click", async () => {
+      try {
+        await fetch("/api/simulator/toggle", { method: "POST" });
+        await checkSimulatorStatus();
+      } catch (err) {
+        console.error("Toggle live stream failed:", err);
+      }
+    });
+  }
+
   // Station select dropdown
   const select = document.getElementById("station-select");
   if (select) {

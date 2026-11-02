@@ -5,7 +5,7 @@ Main FastAPI application entry point.
 
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -15,6 +15,8 @@ from backend.database import engine
 from backend.models.database import Base
 from backend.routes import readings, nodes, predictions, alerts, dashboard
 from backend.utils.seed_data import seed_database_if_empty
+from backend.websocket import ws_manager
+from backend.simulator_service import simulator_service
 
 logging.basicConfig(
     level=logging.INFO,
@@ -33,6 +35,8 @@ async def lifespan(app: FastAPI):
     logger.info("Water Quality Monitoring System ready!")
     yield
     logger.info("Shutting down Water Quality Monitoring System...")
+    if simulator_service.is_running:
+        await simulator_service.stop()
 
 
 app = FastAPI(
@@ -95,10 +99,65 @@ def simulate_anomaly_event(node_id: str, anomaly_type: str = "acid"):
         db.close()
 
 
+# ── WebSocket Real-Time Telemetry Stream ─────────────────────────
+@app.websocket("/ws/telemetry")
+async def websocket_telemetry_endpoint(websocket: WebSocket):
+    """
+    WebSocket endpoint for instant live streaming telemetry.
+    Clients receive updates whenever new sensor readings or alerts arrive.
+    """
+    await ws_manager.connect(websocket)
+    try:
+        # Send current simulator status immediately upon connection
+        await websocket.send_json({
+            "type": "simulator_status",
+            "data": simulator_service.get_status()
+        })
+        while True:
+            data = await websocket.receive_text()
+            if data == "ping":
+                await websocket.send_text("pong")
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket)
+    except Exception as e:
+        logger.warning(f"WebSocket client disconnected/error: {e}")
+        ws_manager.disconnect(websocket)
+
+
+# ── Background Auto-Simulator Endpoints ──────────────────────────
+@app.post("/api/simulator/start")
+async def start_background_simulator(interval: float = 3.5, anomaly_rate: float = 0.08):
+    """Start continuous automatic telemetry generation."""
+    return await simulator_service.start(interval=interval, anomaly_rate=anomaly_rate)
+
+
+@app.post("/api/simulator/stop")
+async def stop_background_simulator():
+    """Stop continuous automatic telemetry generation."""
+    return await simulator_service.stop()
+
+
+@app.post("/api/simulator/toggle")
+async def toggle_background_simulator():
+    """Toggle continuous automatic telemetry generation."""
+    return await simulator_service.toggle()
+
+
+@app.get("/api/simulator/status")
+def get_background_simulator_status():
+    """Get current simulator running status and interval."""
+    return simulator_service.get_status()
+
+
 @app.get("/health")
 def health_check():
     """Health check endpoint."""
-    return {"status": "ok", "service": "AI Water Quality Platform"}
+    return {
+        "status": "ok",
+        "service": "AI Water Quality Platform",
+        "simulator_running": simulator_service.is_running,
+        "ws_clients": len(ws_manager.active_connections)
+    }
 
 
 # ── Mount Frontend Static Files ───────────────────────────────────
