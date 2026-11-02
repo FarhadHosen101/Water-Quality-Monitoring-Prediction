@@ -138,6 +138,17 @@ function initWebSocket() {
     };
 
     ws.onclose = () => {
+      state.wsAttempts = (state.wsAttempts || 0) + 1;
+      if (state.wsAttempts > 3) {
+        console.info("WebSocket unavailable (e.g. serverless environment like Vercel). Using HTTP fallback polling.");
+        if (pulseDot) pulseDot.classList.remove("ws-disconnected");
+        if (wsStatusText) wsStatusText.textContent = state.lang === "bn" ? "লাইভ টেলিমეტ্রি" : "LIVE TELEMETRY";
+        // Ensure regular polling is running fast (every 6s)
+        if (!state.fallbackPolling) {
+          state.fallbackPolling = setInterval(refreshTelemetry, 6000);
+        }
+        return;
+      }
       console.warn("WebSocket disconnected. Retrying in 3s...");
       if (pulseDot) pulseDot.classList.add("ws-disconnected");
       if (wsStatusText) wsStatusText.textContent = state.lang === "bn" ? "পুনঃসংযোগ হচ্ছে..." : "RECONNECTING...";
