@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AquaAI — Water Quality Monitoring & Pollution Prediction</title>
+
+  <!-- Modern Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Leaflet GIS Map CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="navbar">
+    <div class="nav-brand">
+      <div class="brand-icon">💧</div>
+      <div>
+        <div class="brand-title" data-i18n="title">AquaAI Platform</div>
+        <div class="brand-subtitle" data-i18n="subtitle">AI Water Quality & Pollution Prediction</div>
+      </div>
+    </div>
+
+    <div class="nav-actions">
+      <div class="live-badge">
+        <span class="pulse-dot"></span>
+        <span data-i18n="live_badge">LIVE TELEMETRY</span>
+      </div>
+
+      <button id="btn-toggle-lang" class="btn btn-secondary" title="Switch English / Bangla">বাং</button>
+      <button id="btn-export-csv" class="btn btn-secondary" data-i18n="export_btn">📥 Export CSV</button>
+      <button id="btn-open-sim" class="btn btn-primary" data-i18n="sim_btn">⚡ Simulate Event</button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="dashboard-container">
+
+    <!-- KPI Summary Grid -->
+    <section class="kpi-grid">
+      <!-- KPI 1: Overall WQI -->
+      <div class="card">
+        <div class="card-header-sm">
+          <span class="card-title-sm" data-i18n="kpi_avg_wqi">System Water Quality Index</span>
+          <div class="card-icon" style="color:#06b6d4;">📊</div>
+        </div>
+        <div class="kpi-value" id="kpi-avg-wqi">--</div>
+        <div class="kpi-subtext status-good" id="kpi-avg-wqi-sub">Overall Status: Good</div>
+      </div>
+
+      <!-- KPI 2: Active Nodes -->
+      <div class="card">
+        <div class="card-header-sm">
+          <span class="card-title-sm" data-i18n="kpi_active_nodes">Active Monitoring Stations</span>
+          <div class="card-icon" style="color:#10b981;">📡</div>
+        </div>
+        <div class="kpi-value" id="kpi-active-nodes">5 / 5</div>
+        <div class="kpi-subtext" style="color:#10b981;">● All telemetry nodes streaming</div>
+      </div>
+
+      <!-- KPI 3: AI Anomalies -->
+      <div class="card">
+        <div class="card-header-sm">
+          <span class="card-title-sm" data-i18n="kpi_anomalies">AI Anomalies (24h)</span>
+          <div class="card-icon" style="color:#f59e0b;">🤖</div>
+        </div>
+        <div class="kpi-value" id="kpi-anomalies" style="color:#f59e0b;">0</div>
+        <div class="kpi-subtext" style="color:#94a3b8;">Isolation Forest real-time detector</div>
+      </div>
+
+      <!-- KPI 4: Active Alerts -->
+      <div class="card">
+        <div class="card-header-sm">
+          <span class="card-title-sm" data-i18n="kpi_alerts">Active Threshold Alerts</span>
+          <div class="card-icon" style="color:#ef4444;">🔔</div>
+        </div>
+        <div class="kpi-value" id="kpi-unread-alerts" style="color:#ef4444;">0</div>
+        <div class="kpi-subtext" style="color:#94a3b8;">Requires authority acknowledgement</div>
+      </div>
+    </section>
+
+    <!-- Map & Selected Station Real-Time Telemetry -->
+    <section class="main-grid">
+      <!-- Leaflet Map Card -->
+      <div class="card map-card">
+        <div class="card-title-bar">
+          <h2 class="section-title" data-i18n="map_title">🗺️ Water Bodies & IoT Stations Map</h2>
+          <span style="font-size:0.75rem; color:#64748b;">Click any marker to inspect station</span>
+        </div>
+        <div id="map"></div>
+      </div>
+
+      <!-- Selected Station Live Telemetry -->
+      <div class="card telemetry-card">
+        <div>
+          <div class="card-title-bar">
+            <h2 class="section-title" data-i18n="station_details">⚡ Station Real-Time Telemetry</h2>
+          </div>
+
+          <div class="station-selector-box">
+            <select id="station-select" class="select-input" aria-label="Select monitoring station"></select>
+          </div>
+
+          <div class="wqi-hero-box">
+            <div class="wqi-hero-left">
+              <h4>Water Quality Index</h4>
+              <p id="station-status-text">Station: Node Alpha • Location: Buriganga River</p>
+              <div style="margin-top:0.4rem;">
+                <span id="station-risk-badge" class="badge-risk badge-good">Good</span>
+              </div>
+            </div>
+            <div class="wqi-hero-score" id="station-wqi-score">--</div>
+          </div>
+        </div>
+
+        <!-- 5 Parameter Meters Grid -->
+        <div class="telemetry-meters-grid">
+          <!-- pH -->
+          <div class="meter-box">
+            <div class="meter-label">pH Level</div>
+            <div class="meter-value-row">
+              <span class="meter-val" id="meter-ph">--</span>
+              <span class="meter-unit">6.5 - 8.5 Safe</span>
+            </div>
+            <div class="meter-bar-track">
+              <div class="meter-bar-fill" id="bar-ph" style="background:#10b981; width:50%;"></div>
+            </div>
+          </div>
+
+          <!-- Turbidity -->
+          <div class="meter-box">
+            <div class="meter-label">Turbidity (NTU)</div>
+            <div class="meter-value-row">
+              <span class="meter-val" id="meter-turb">--</span>
+              <span class="meter-unit">&lt; 5.0 NTU Ideal</span>
+            </div>
+            <div class="meter-bar-track">
+              <div class="meter-bar-fill" id="bar-turb" style="background:#f59e0b; width:20%;"></div>
+            </div>
+          </div>
+
+          <!-- Dissolved Oxygen -->
+          <div class="meter-box">
+            <div class="meter-label">Dissolved Oxygen (DO)</div>
+            <div class="meter-value-row">
+              <span class="meter-val" id="meter-do">--</span>
+              <span class="meter-unit">mg/L (&gt; 5 Safe)</span>
+            </div>
+            <div class="meter-bar-track">
+              <div class="meter-bar-fill" id="bar-do" style="background:#3b82f6; width:70%;"></div>
+            </div>
+          </div>
+
+          <!-- Temperature -->
+          <div class="meter-box">
+            <div class="meter-label">Water Temperature</div>
+            <div class="meter-value-row">
+              <span class="meter-val" id="meter-temp">--</span>
+              <span class="meter-unit">°C (DS18B20)</span>
+            </div>
+            <div class="meter-bar-track">
+              <div class="meter-bar-fill" id="bar-temp" style="background:#06b6d4; width:65%;"></div>
+            </div>
+          </div>
+
+          <!-- TDS (Total Dissolved Solids) -->
+          <div class="meter-box meter-tds-box">
+            <div class="meter-label">Total Dissolved Solids (TDS)</div>
+            <div class="meter-value-row">
+              <span class="meter-val" id="meter-tds">--</span>
+              <span class="meter-unit">ppm (&lt; 500 Safe)</span>
+            </div>
+            <div class="meter-bar-track">
+              <div class="meter-bar-fill" id="bar-tds" style="background:#8b5cf6; width:30%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Multi-Parameter Trends & AI 24h Forecast -->
+    <section class="charts-grid">
+      <!-- Historical Trends -->
+      <div class="card chart-card">
+        <div class="card-title-bar">
+          <h2 class="section-title" data-i18n="trends_title">📈 Multi-Parameter Time Series Analysis</h2>
+          <div class="chart-controls">
+            <button class="pill-btn active" data-hours="24">24H</button>
+            <button class="pill-btn" data-hours="48">48H</button>
+            <button class="pill-btn" data-hours="120">5D</button>
+          </div>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="trendsChart"></canvas>
+        </div>
+      </div>
+
+      <!-- AI Forecast -->
+      <div class="card chart-card">
+        <div class="card-title-bar">
+          <h2 class="section-title" data-i18n="forecast_title">🔮 24-Hour AI Pollution Forecast</h2>
+          <button id="btn-run-forecast" class="btn btn-secondary" style="padding:0.3rem 0.7rem; font-size:0.75rem;" data-i18n="btn_predict">
+            Run AI Forecast
+          </button>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="forecastChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bottom Section: Alerts Feed, WHO Radar & Lab Benchmarks -->
+    <section class="bottom-grid">
+      <!-- Left: WHO Compliance Radar & Live Alerts -->
+      <div class="card chart-card">
+        <div class="card-title-bar">
+          <h2 class="section-title" data-i18n="standards_title">🎯 WHO Compliance Radar</h2>
+        </div>
+        <div class="chart-wrapper" style="height:260px;">
+          <canvas id="radarChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Right: Real-time Alerts Feed -->
+      <div class="card" style="display:flex; flex-direction:column;">
+        <div class="card-title-bar">
+          <div>
+            <h2 class="section-title" data-i18n="alerts_title">🔔 Real-time Alerts & Notifications</h2>
+            <span style="font-size:0.75rem; color:#64748b;">Automated Threshold & Anomaly triggers</span>
+          </div>
+          <button id="btn-mark-all-read" class="btn btn-secondary" style="font-size:0.75rem; padding:0.35rem 0.75rem;" title="Mark all alerts as acknowledged">✓ Clear / Mark Read</button>
+        </div>
+        <div id="alerts-container" class="alerts-list">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Lab Benchmarking & Validation (Bucket Test from Proposal) -->
+    <section class="card">
+      <div class="card-title-bar">
+        <h2 class="section-title" data-i18n="lab_title">🧪 Lab Ground-Truth Benchmarks (Bucket Test Validation)</h2>
+        <span style="font-size:0.75rem; color:#64748b;">Standard comparative testing per project proposal specifications</span>
+      </div>
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Water Sample Source</th>
+              <th>pH</th>
+              <th>Turbidity</th>
+              <th>Dissolved Oxygen</th>
+              <th>TDS</th>
+              <th>Computed WQI</th>
+              <th>Classification & Potability</th>
+            </tr>
+          </thead>
+          <tbody id="lab-benchmarks-tbody">
+            <!-- Populated dynamically via JS -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Simulation Modal -->
+  <div id="sim-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 style="font-size:1.1rem; font-weight:700;">⚡ Inject Simulation Anomaly</h3>
+        <button id="modal-close-btn" class="modal-close">&times;</button>
+      </div>
+      <p style="font-size:0.85rem; color:#94a3b8; margin-bottom:1.25rem;">
+        Select an environmental scenario to inject into the selected station. You can test real-time AI anomaly detection or restore water back to safe baseline.
+      </p>
+
+      <div style="display:flex; flex-direction:column; gap:0.75rem;">
+        <button class="btn btn-danger btn-sim-action" data-type="acid">
+          🧪 Acidic Industrial Discharge (pH 4.1, High Turbidity)
+        </button>
+        <button class="btn btn-danger btn-sim-action" data-type="sludge">
+          🏭 Heavy Sludge Dump (Turbidity 185 NTU, DO 1.5 mg/L)
+        </button>
+        <button class="btn btn-danger btn-sim-action" data-type="chemical">
+          ☣️ Chemical Effluent Spike (TDS 1680 ppm, pH 9.6)
+        </button>
+        <button class="btn btn-primary btn-sim-action" data-type="normal" style="background:#10b981; border-color:#10b981; color:#fff;">
+          🌿 Restore Normal Water Quality (pH 7.4, WQI &lt; 25 Good)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CDN Dependencies -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+
+  <!-- Application Logic -->
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

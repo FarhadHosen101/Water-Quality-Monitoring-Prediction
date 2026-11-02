@@ -1,0 +1,31 @@
+# Python virtual environment
+venv/
+env/
+ENV/
+.venv/
+
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local environment variables & secrets
+.env
+.env.local
+
+# SQLite database (generated at runtime)
+data/water_quality.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# Logs
+*.log
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
