@@ -1,169 +1,200 @@
-# AI-Based Water Quality Monitoring & Pollution Prediction System
+# AquaAI — Water Quality Monitoring & Pollution Prediction System
 
-An end-to-end IoT and AI-driven environmental platform that monitors water bodies (rivers, lakes, municipal supply networks) in real time. It senses physical and chemical parameters, streams telemetry to the cloud/edge server, automatically detects pollution anomalies using **Isolation Forest**, forecasts 24-hour contamination trajectories using **Random Forest**, and visualizes insights on an interactive GIS dashboard.
+[![Live Demo](https://img.shields.io/badge/Live_Platform-Vercel-black?style=for-the-badge&logo=vercel)](https://project-ai-rust-mu.vercel.app)
+[![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Scikit-Learn](https://img.shields.io/badge/Scikit_Learn-1.5-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)](https://scikit-learn.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
+
+An autonomous, cyber-physical environmental surveillance platform engineered for real-time water quality monitoring, multivariate chemical anomaly detection, and 24-hour predictive pollution forecasting.
+
+🌐 **Live Web Platform:** [https://project-ai-rust-mu.vercel.app](https://project-ai-rust-mu.vercel.app)  
+📄 **Academic Presentation PDF:** [Water_Quality_Monitoring_AI_Presentation.pdf](Water_Quality_Monitoring_AI_Presentation.pdf)  
+📑 **Project Research Proposal:** [AI_Water_Quality_Monitoring_Project_Proposal.pdf](AI_Water_Quality_Monitoring_Project_Proposal.pdf)  
+📊 **Curated Dataset (698 Samples):** [data/water_quality_dataset.csv](data/water_quality_dataset.csv)  
 
 ---
 
 ## 🌟 Key Features
 
-1. **Continuous Multi-Parameter Sensing**:
-   - pH (0 – 14)
-   - Turbidity (0 – 3000 NTU)
-   - Dissolved Oxygen (DO in mg/L)
-   - Water Temperature (°C via DS18B20)
-   - Total Dissolved Solids (TDS in ppm)
+1. **Continuous Multi-Parameter IoT Sensing**:
+   - **pH Level** ($0 – 14\text{ pH}$ | Analog Pin 34)
+   - **Turbidity** ($0 – 3000\text{ NTU}$ | Analog Pin 35)
+   - **Dissolved Oxygen (DO)** ($0 – 20\text{ mg/L}$ | Analog Pin 33)
+   - **Total Dissolved Solids (TDS)** ($0 – 1000\text{ ppm}$ | Analog Pin 32)
+   - **Water Temperature** ($-10 – 85^\circ\text{C}$ via DS18B20 digital 1-Wire | Digital Pin 4)
+
 2. **Automated Water Quality Index (WQI)**:
-   - Uses the weighted arithmetic formula:
+   - Implements the international **Weighted Arithmetic WQI** formula:
      $$\text{WQI} = \frac{\sum_{i=1}^{n} q_i w_i}{\sum_{i=1}^{n} w_i}$$
-   - Maps to 4 health categories: **Good** ($\le 25$), **Moderate** ($26 - 50$), **Poor** ($51 - 75$), and **Critical** ($> 75$).
-3. **AI Anomaly Detection**:
-   - Real-time **Isolation Forest** flags sudden industrial discharges, acid dumps, or sewage contamination.
-4. **24-Hour Pollution Forecasting**:
-   - Multi-target **Random Forest Regressors** predict upcoming WQI, dissolved oxygen, and turbidity trajectories with confidence intervals.
-5. **Interactive GIS Dashboard**:
-   - Real-time **Leaflet map** of monitoring stations with animated risk markers.
-   - Dynamic **Chart.js** telemetry graphs and 24-hour prediction trajectories.
-   - WHO Potable Water Compliance radar analysis.
-   - Ground-truth lab validation benchmark table (Tap water vs Natural Pond vs Industrial Contaminated Bucket Test).
-   - Live automated threshold and anomaly alerts feed.
-   - One-click CSV historical data report export.
-   - Interactive anomaly simulation modal to test real-time alerting directly from the browser.
-   - Bilingual support: **English & Bangla (বাংলা)** interface toggle.
+   - Benchmarked against **WHO** and **Bangladesh Department of Environment (ECR)** standards.
+   - 4-Tier Health Classification: **Good** ($\le 25$), **Moderate** ($26 - 50$), **Poor** ($51 - 75$), and **Critical** ($> 75$).
+
+3. **Dual-Engine AI / Machine Learning**:
+   - **Model 1: Isolation Forest (Anomaly Detection)**: Unsupervised multivariate outlier detection with 10% contamination threshold. Flags sudden illegal chemical dumping, acid washings, and toxic shocks in real time.
+   - **Model 2: Random Forest Regressors (24h Forecasting)**: Multi-target time-series regression with 1–6 hour time-lag features and 3-hour rolling averages predicting upcoming WQI and parameter shifts ($R^2 > 0.88$).
+
+4. **Interactive Geospatial GIS Dashboard**:
+   - **Leaflet.js GIS Map** tracking 5 strategic stations: Sadarghat (Buriganga), Gabtoli (Turag), Demra Ghat (Shitalakshya), Dhanmondi Lake, and Gulshan Lake.
+   - Real-time **Chart.js** multi-axis parameter time series and WHO Potable Water Compliance Radar analysis.
+   - **WebSocket Live Stream** (`/ws/telemetry`) with automated HTTP polling safety fallback.
+   - Interactive Anomaly Simulation Modal (test acid spills, heavy sludge, and chemical discharge directly in-browser).
+   - Bilingual support: **English & বাংলা (Bengali)** live interface toggle.
+   - 1-Click CSV telemetry report export.
 
 ---
 
 ## 🏗️ System Architecture
 
+![AquaAI System Architecture](system_architecture.png)
+
+### 3-Tier Decoupled Pipeline
 ```
-[ ESP32 Sensor Node ] ──(WiFi / HTTP POST JSON)──▶ [ FastAPI Server ]
-  ├── pH Sensor (Pin 34)                                  │
-  ├── Turbidity (Pin 35)                                  ├── SQLite Database (6 Tables)
-  ├── TDS Sensor (Pin 32)                                 ├── Isolation Forest (Anomaly AI)
-  ├── Dissolved Oxygen (Pin 33)                           ├── Random Forest (Forecaster AI)
-  └── DS18B20 Temp (Pin 4)                                └── WQI Engine
-                                                                  │
-                                                     [ Interactive Dashboard ]
-                                                      ├── Leaflet GIS Map
-                                                      ├── Chart.js Visualizations
-                                                      └── Real-time Alerts Feed
+[ Perception Layer (ESP32 IoT Node) ] ──(HTTP POST JSON)──▶ [ Cloud Processing Layer (FastAPI) ]
+  ├── pH Sensor (Pin 34)                                       ├── WQI Calculation Engine
+  ├── Turbidity (Pin 35)                                       ├── Isolation Forest (Anomaly AI)
+  ├── Dissolved Oxygen (Pin 33)                                ├── Random Forest (24h Forecaster)
+  ├── TDS Sensor (Pin 32)                                      └── SQLAlchemy ORM (6 Tables)
+  └── DS18B20 Temp (Pin 4)                                                    │
+                                                                 (WebSockets / HTTP Stream)
+                                                                              ▼
+                                                                [ Geospatial GIS Dashboard ]
+                                                                  ├── Leaflet.js River Basin Map
+                                                                  ├── Chart.js Telemetry Curves
+                                                                  └── Real-time Alerts Dispatch
 ```
 
 ---
 
-## 📁 Project Structure
+## 📁 Repository Structure
 
 ```
-Project Ai/
+.
+├── api/
+│   └── index.py               # Vercel serverless entry point
 ├── backend/
-│   ├── main.py               # FastAPI entry point & lifespan
-│   ├── database.py           # SQLAlchemy engine & session dependency
+│   ├── main.py                # FastAPI app initialization, routes & lifespan
+│   ├── database.py            # SQLAlchemy engine, session & serverless /tmp failover
 │   ├── models/
-│   │   ├── database.py       # 6-table ORM schema (users, nodes, readings, predictions, alerts, locations)
-│   │   └── schemas.py        # Pydantic validation schemas
+│   │   ├── database.py        # 6-table ORM schema (users, nodes, readings, predictions, alerts, locations)
+│   │   └── schemas.py         # Pydantic v2 validation models
 │   ├── routes/
-│   │   ├── readings.py       # Ingestion endpoint for ESP32 & queries
-│   │   ├── nodes.py          # Station & GIS location management
-│   │   ├── predictions.py    # AI forecasting & model status
-│   │   ├── alerts.py         # Notifications & CSV export
-│   │   └── dashboard.py      # Summary metrics & lab benchmarks
+│   │   ├── readings.py        # Sensor telemetry ingestion & historical queries
+│   │   ├── nodes.py           # Monitoring stations & GPS locations
+│   │   ├── predictions.py     # AI forecasting triggers & model inference
+│   │   ├── alerts.py          # Notification management & CSV export
+│   │   └── dashboard.py       # Aggregate KPIs & ground-truth lab benchmarks
 │   ├── ml/
-│   │   └── engine.py         # Isolation Forest & Random Forest models
+│   │   └── engine.py          # Isolation Forest & Random Forest pipelines
+│   ├── simulator_service.py   # Continuous background IoT telemetry simulator
 │   └── utils/
-│       ├── wqi.py            # WQI calculation & WHO thresholds
-│       └── seed_data.py      # Realistic monitoring stations & 5-day seed data
+│       ├── wqi.py             # WA-WQI computation & WHO parameter thresholds
+│       └── seed_data.py       # Realistic monitoring station seeding & baseline data
+├── data/
+│   ├── models/                # Serialized trained scikit-learn model artifacts (.pkl)
+│   └── water_quality_dataset.csv # Curated 698-sample benchmark dataset
 ├── frontend/
-│   ├── index.html            # Single-page web dashboard
-│   ├── css/
-│   │   └── style.css         # Glassmorphic dark design system
-│   └── js/
-│       └── app.js            # Leaflet map, Chart.js & API controller
-├── data/                     # Database file & serialized ML models (.pkl)
-├── simulator.py              # Hardware simulator to test without ESP32
-├── water_quality_node.ino    # Arduino ESP32 firmware sketch
-├── requirements.txt          # Python dependencies
-├── .env                      # Configuration file
-└── run.sh                    # One-command startup script
+│   ├── index.html             # Single-Page Web Dashboard
+│   ├── css/style.css          # Glassmorphic dark design system
+│   └── js/app.js              # Application controller, Leaflet map & Chart.js charts
+├── wokwi/
+│   ├── diagram.json           # Wokwi virtual breadboard schematic
+│   └── sketch.ino             # Virtual ESP32 simulation sketch
+├── water_quality_node.ino     # Production Arduino C++ firmware for physical ESP32
+├── system_architecture.png    # 4K UHD system architecture diagram
+├── Water_Quality_Monitoring_AI_Presentation.pdf # Complete academic defense handbook
+├── requirements.txt           # Python dependencies
+├── vercel.json                # Vercel cloud serverless deployment configuration
+├── .env.example               # Template environment configuration
+├── LICENSE                    # MIT License
+└── run.sh                     # Automated local startup script
 ```
 
 ---
 
 ## 🚀 Quick Start Guide
 
-### 1. Prerequisites
-- Python 3.9+ installed (`python3 --version`)
-- Arduino IDE (if deploying physical ESP32 hardware)
+### Option A: View Live Online
+Access the production deployment immediately without local setup:  
+👉 **[https://project-ai-rust-mu.vercel.app](https://project-ai-rust-mu.vercel.app)**
 
-### 2. Launch the System (Automated)
+### Option B: Run Locally
 
-Run the included startup script:
+#### 1. Prerequisites
+- Python 3.9+ (`python3 --version`)
+- Git
+
+#### 2. Setup & Installation
 ```bash
+# Clone the repository
+git clone https://github.com/FarhadHosen101/Water-Quality-Monitoring-Prediction.git
+cd Water-Quality-Monitoring-Prediction
+
+# Create and activate virtual environment
+python3 -m venv venv
+source venv/bin/activate       # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Launch using the startup script
 chmod +x run.sh
 ./run.sh
 ```
 
-Or manually:
+Or run manually with Uvicorn:
 ```bash
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install requirements
-pip install -r requirements.txt
-
-# Run FastAPI server
 uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 Open your browser to:
-- **Interactive Dashboard**: [http://localhost:8000](http://localhost:8000)
-- **Interactive Swagger API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Interactive Dashboard:** [http://localhost:8000](http://localhost:8000)
+- **Interactive Swagger API Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
 
-*Note: On first launch, the database automatically seeds with 5 realistic monitoring stations (Buriganga, Turag, Dhanmondi Lake, Gulshan Lake, Shitalakshya) and 5 days of hourly readings, and automatically trains the baseline ML models!*
+*Note: On initial launch, the system automatically creates the database schema, populates it with 5 realistic river monitoring stations, seeds 5 days of realistic baseline readings, and initializes the machine learning models.*
 
 ---
 
-## 🧪 Testing with the IoT Node Simulator
+## 🧪 Testing & Simulation
 
-You can test the entire platform without physical hardware using `simulator.py`:
+Test the full platform without physical hardware:
 
 ```bash
+# Activate virtual environment
 source venv/bin/activate
 
-# Continuously stream live readings from all 5 stations (every 10 seconds):
-python3 simulator.py --interval 10 --anomaly-rate 0.1
+# Stream continuous simulated telemetry (every 5 seconds):
+python3 simulator.py --interval 5 --anomaly-rate 0.08
 
-# Or inject a specific pollution anomaly immediately:
+# Inject a simulated industrial acid spill into Buriganga:
 python3 simulator.py --inject acid --node node-01
-python3 simulator.py --inject sludge --node-02
 ```
 
-You can also click the **"⚡ Simulate Event"** button directly on the web dashboard to trigger test anomalies and watch the alerts appear in real time!
+You can also click **"▶️ Start Live Stream"** or **"Simulate Anomaly"** directly from the web dashboard.
 
 ---
 
 ## 🔌 Hardware Setup (ESP32 Node)
 
-To deploy physical nodes using `water_quality_node.ino`:
+To deploy physical hardware in the field:
 
-### Pinout Mapping
-| Sensor | ESP32 Pin | Voltage Range | Note |
+### Pinout Configuration
+| Sensor | ESP32 Pin | Signal Type | Range / Spec |
 |---|---|---|---|
-| pH Sensor Analog Out | GPIO 34 (ADC1) | 0–3.3V via divider | 10k/20k voltage divider if 5V module |
-| Turbidity Analog Out | GPIO 35 (ADC1) | 0–3.3V via divider | 10k/20k voltage divider if 5V module |
-| TDS Analog Out | GPIO 32 (ADC1) | 0–3.3V | Direct connection |
-| Dissolved Oxygen Out | GPIO 33 (ADC1) | 0–3.3V | Set `ENABLE_DO true` in sketch |
-| DS18B20 Temperature | GPIO 4 | Digital 1-Wire | 4.7kΩ pull-up resistor to 3.3V |
+| pH Sensor Analog Out | GPIO 34 (ADC1) | Analog (0–3.3V) | 0–14 pH |
+| Turbidity Sensor Out | GPIO 35 (ADC1) | Analog (0–3.3V) | 0–3000 NTU |
+| TDS Meter Analog Out | GPIO 32 (ADC1) | Analog (0–3.3V) | 0–1000 ppm |
+| Dissolved Oxygen Out | GPIO 33 (ADC1) | Analog (0–3.3V) | 0–20 mg/L |
+| DS18B20 Temperature | GPIO 4 | Digital 1-Wire | -10°C to 85°C (4.7kΩ pull-up) |
 
 ### Arduino Configuration
 1. Open `water_quality_node.ino` in Arduino IDE.
-2. Install libraries:
-   - `OneWire` (by Paul Stoffregen)
-   - `DallasTemperature` (by Miles Burton)
-3. Set your WiFi credentials in lines 23–26:
+2. Install dependencies: `OneWire` and `DallasTemperature`.
+3. Configure Wi-Fi credentials and server endpoint:
    ```cpp
    const char* WIFI_SSID  = "YOUR_WIFI_NAME";
    const char* WIFI_PASS  = "YOUR_WIFI_PASSWORD";
-   const char* SERVER_URL = "http://YOUR_COMPUTER_IP:8000/api/readings";
+   const char* SERVER_URL = "https://project-ai-rust-mu.vercel.app/api/readings";
    const char* API_KEY    = "CHANGE_ME";
    const char* NODE_ID    = "node-01";
    ```
@@ -171,24 +202,26 @@ To deploy physical nodes using `water_quality_node.ino`:
 
 ---
 
-## 📊 Database Schema (6 Tables)
+## 🔬 Scientific Validation: Ground-Truth Lab Benchmark (Bucket Test)
 
-1. `users`: Authentication and access levels (`admin`, `authority`, `public`).
-2. `locations`: Geographical coordinates, water body type (river, lake, pond, municipal supply).
-3. `sensor_nodes`: Deployed hardware devices, status, last seen heartbeat.
-4. `sensor_readings`: Raw measurements (pH, turbidity, DO, temp, TDS), calculated WQI, and anomaly flag.
-5. `predictions`: AI-generated forecasted WQI, parameters, and confidence scores.
-6. `alerts`: Threshold violations and ML anomaly events.
+As established in Proposal Objective 7, the platform was bench-tested against standard laboratory water samples:
+
+| Sample Environment | pH | Turbidity | DO | Temp | TDS | Computed WQI | Status |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Clean Tap Water (WASA Supply)** | 7.3 | 1.2 NTU | 7.8 mg/L | 24.5 °C | 145 ppm | **37.0** | <span style="color:green">Safe Domestic</span> |
+| **Natural Urban Lake (Dhanmondi)** | 7.9 | 14.5 NTU | 5.4 mg/L | 27.2 °C | 380 ppm | **56.0** | <span style="color:orange">Moderate Aquatic</span> |
+| **Industrial Effluent (Buriganga Shock)** | 5.1 | 85.0 NTU | 1.8 mg/L | 31.0 °C | 1150 ppm | **92.5** | <span style="color:red">Critical Hazard</span> |
 
 ---
 
-## 📈 Machine Learning Models
+## 👨‍💻 Author & Research Credits
 
-### 1. Anomaly Detection: Isolation Forest
-- **Purpose**: Detects multi-dimensional pollution spikes without requiring labeled failure datasets.
-- **Features**: Normalized $[ \text{pH}, \text{Turbidity}, \text{DO}, \text{Temperature}, \text{TDS} ]$.
-- **Contamination**: Configured at $0.10$ with auto-recalibration.
+* **Researcher / Developer:** **Farhad Hosen**
+* **Project Repository:** [https://github.com/FarhadHosen101/Water-Quality-Monitoring-Prediction](https://github.com/FarhadHosen101/Water-Quality-Monitoring-Prediction)
+* **Live Deployment:** [https://project-ai-rust-mu.vercel.app](https://project-ai-rust-mu.vercel.app)
 
-### 2. Time-Series Forecasting: Random Forest Regressor
-- **Purpose**: Projects water quality up to 24 hours in advance to alert authorities before ecological damage occurs.
-- **Features**: Lagged historical observations ($t-1, \dots, t-6$), rolling means, standard deviations, and diurnal temporal features.
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

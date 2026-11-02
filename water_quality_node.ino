@@ -22,7 +22,7 @@
 // ====================== CONFIG ======================
 const char* WIFI_SSID  = "YOUR_WIFI_NAME";
 const char* WIFI_PASS  = "YOUR_WIFI_PASSWORD";
-const char* SERVER_URL = "http://192.168.0.107:8000/api/readings";  // Port 8000 where your FastAPI server runs
+const char* SERVER_URL = "https://project-ai-rust-mu.vercel.app/api/readings";  // Or local: "http://YOUR_SERVER_IP:8000/api/readings"
 const char* API_KEY    = "CHANGE_ME";
 const char* NODE_ID    = "node-01";
 

@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AquaAI - System Architecture</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap');
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    width: 1920px;
+    height: 1080px;
+    background: #090d16;
+    color: #f1f5f9;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    padding: 28px 36px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Background Glow Effects */
+  .glow-1 {
+    position: absolute;
+    top: -100px;
+    left: 10%;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(14, 165, 233, 0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .glow-2 {
+    position: absolute;
+    bottom: -100px;
+    right: 15%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+    z-index: 2;
+  }
+
+  .title-group {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .logo-badge {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #0284c7, #2563eb);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    box-shadow: 0 0 20px rgba(2, 132, 199, 0.4);
+  }
+
+  .main-title {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .sub-title {
+    font-size: 13px;
+    color: #94a3b8;
+    margin-top: 2px;
+  }
+
+  .header-tags {
+    display: flex;
+    gap: 10px;
+  }
+
+  .tag {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(15, 23, 42, 0.7);
+  }
+  .tag-blue { color: #38bdf8; border-color: rgba(56, 189, 248, 0.3); background: rgba(56, 189, 248, 0.08); }
+  .tag-green { color: #4ade80; border-color: rgba(74, 222, 128, 0.3); background: rgba(74, 222, 128, 0.08); }
+  .tag-purple { color: #c084fc; border-color: rgba(192, 132, 252, 0.3); background: rgba(192, 132, 252, 0.08); }
+  .tag-amber { color: #fbbf24; border-color: rgba(251, 191, 36, 0.3); background: rgba(251, 191, 36, 0.08); }
+
+  /* Main Grid */
+  .architecture-body {
+    display: grid;
+    grid-template-columns: 1.05fr 50px 1.25fr 50px 1.1fr;
+    align-items: stretch;
+    gap: 0;
+    height: 870px;
+    position: relative;
+    z-index: 2;
+    margin-top: 14px;
+  }
+
+  /* Layer Column */
+  .layer-col {
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 16px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    position: relative;
+  }
+
+  .layer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    margin-bottom: 14px;
+  }
+
+  .layer-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .layer-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-weight: 700;
+  }
+
+  /* Components within Column */
+  .card-box {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 11px;
+    transition: all 0.2s;
+  }
+  .card-box:last-child {
+    margin-bottom: 0;
+  }
+
+  .card-box-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .card-box-title {
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .card-subtext {
+    font-size: 11px;
+    color: #94a3b8;
+    line-height: 1.45;
+  }
+
+  /* Sensor Row */
+  .sensor-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+
+  .sensor-item {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: 8px;
+    padding: 7px 11px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .sensor-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #e2e8f0;
+  }
+
+  .sensor-pin {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+  }
+
+  /* Connector Pipes */
+  .connector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  .pipe-line {
+    width: 2px;
+    height: 80%;
+    background: linear-gradient(180deg, transparent, rgba(56, 189, 248, 0.4), rgba(74, 222, 128, 0.4), transparent);
+    position: absolute;
+  }
+
+  .flow-bubble {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #0f172a;
+    border: 2px solid #38bdf8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+    z-index: 3;
+    margin: 12px 0;
+  }
+
+  .flow-label {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #64748b;
+    margin: 8px 0;
+  }
+
+  /* Specific Highlights */
+  .highlight-cyan { border-left: 3px solid #0ea5e9; }
+  .highlight-green { border-left: 3px solid #10b981; }
+  .highlight-purple { border-left: 3px solid #a855f7; }
+  .highlight-amber { border-left: 3px solid #f59e0b; }
+  .highlight-rose { border-left: 3px solid #f43f5e; }
+
+  /* Mathematical formula box */
+  .math-box {
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px dashed rgba(74, 222, 128, 0.4);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: #86efac;
+    text-align: center;
+    margin: 6px 0;
+  }
+
+  /* Pill tags */
+  .pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 6px;
+  }
+
+  .mini-pill {
+    font-size: 9.5px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #cbd5e1;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* Footer */
+  .footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 11px;
+    color: #64748b;
+    position: relative;
+    z-index: 2;
+  }
+
+  .footer-links {
+    display: flex;
+    gap: 18px;
+  }
+  .footer-links span {
+    color: #94a3b8;
+  }
+</style>
+</head>
+<body>
+
+<div class="glow-1"></div>
+<div class="glow-2"></div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="title-group">
+    <div class="logo-badge">💧</div>
+    <div>
+      <h1 class="main-title">AquaAI: System Architecture &amp; Cyber-Physical Pipeline</h1>
+      <p class="sub-title">End-to-End Multi-Sensor IoT Telemetry, Cloud Machine Learning Engine, and Real-Time GIS Surveillance</p>
+    </div>
+  </div>
+  <div class="header-tags">
+    <div class="tag tag-blue">Edge IoT (ESP32)</div>
+    <div class="tag tag-green">FastAPI &amp; WQI</div>
+    <div class="tag tag-purple">Isolation &amp; Random Forest</div>
+    <div class="tag tag-amber">Leaflet GIS &amp; Vercel</div>
+  </div>
+</div>
+
+<!-- ARCHITECTURE BODY (3 LAYERS + 2 CONNECTORS) -->
+<div class="architecture-body">
+
+  <!-- ======================================================== -->
+  <!-- COLUMN 1: PERCEPTION LAYER -->
+  <!-- ======================================================== -->
+  <div class="layer-col">
+    <div>
+      <div class="layer-header">
+        <div class="layer-label" style="color: #38bdf8;">
+          <span>📡</span> Layer 1: IoT Perception
+        </div>
+        <span class="layer-badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">Hardware Edge</span>
+      </div>
+
+      <!-- 5 Sensors Array -->
+      <div class="card-box highlight-cyan">
+        <div class="card-box-header">
+          <span class="card-box-title" style="color: #e0f2fe;">5-Parameter Sensor Array</span>
+          <span style="font-size: 10px; color: #38bdf8; font-weight: 700;">ANALOG &amp; DIGITAL</span>
+        </div>
+        <div class="sensor-grid">
+          <div class="sensor-item">
+            <div class="sensor-left">🧪 pH Sensor Probe</div>
+            <span class="sensor-pin">Pin 34 | 0-14 pH</span>
+          </div>
+          <div class="sensor-item">
+            <div class="sensor-left">🌊 Turbidity Sensor</div>
+            <span class="sensor-pin">Pin 35 | 0-3000 NTU</span>
+          </div>
+          <div class="sensor-item">
+            <div class="sensor-left">💨 Dissolved Oxygen (DO)</div>
+            <span class="sensor-pin">Pin 33 | 0-20 mg/L</span>
+          </div>
+          <div class="sensor-item">
+            <div class="sensor-left">⚡ TDS Meter Probe</div>
+            <span class="sensor-pin">Pin 32 | 0-1000 ppm</span>
+          </div>
+          <div class="sensor-item">
+            <div class="sensor-left">🌡️ DS18B20 Temp Probe</div>
+            <span class="sensor-pin">Pin 4 | -10-85 °C</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ESP32 Controller -->
+      <div class="card-box highlight-cyan" style="margin-top: 10px;">
+        <div class="card-box-header">
+          <span class="card-box-title" style="color: #e0f2fe;">ESP32 IoT Node Controller</span>
+          <span style="font-size: 10px; color: #38bdf8; font-weight: 700;">240MHz SoC</span>
+        </div>
+        <div class="card-subtext">
+          • Xtensa Dual-Core 32-bit LX6 Microcontroller<br>
+          • 12-bit Multi-Channel ADC Signal Sampling<br>
+          • Temperature Compensation Math Algorithms<br>
+          • Embedded JSON Payload Packaging (ArduinoJson)
+        </div>
+        <div class="pill-row">
+          <span class="mini-pill">Deep Sleep</span>
+          <span class="mini-pill">WiFi 802.11b/g/n</span>
+          <span class="mini-pill">Wokwi Simulator</span>
+        </div>
+      </div>
+
+      <!-- Power & Enclosure -->
+      <div class="card-box" style="margin-top: 10px; border-left: 3px solid #64748b;">
+        <div class="card-box-header">
+          <span class="card-box-title" style="color: #cbd5e1;">Power &amp; Field Enclosure</span>
+          <span style="font-size: 10px; color: #94a3b8;">Autonomous</span>
+        </div>
+        <div class="card-subtext">
+          3.7V 18650 Li-ion Battery • TP4056 Solar Charge Controller • IP67 Waterproof Buoy Enclosure.
+        </div>
+      </div>
+    </div>
+
+    <!-- Stations monitored -->
+    <div class="card-box" style="background: rgba(15, 23, 42, 0.85); border: 1px dashed rgba(56, 189, 248, 0.3);">
+      <div style="font-size: 10.5px; font-weight: 700; color: #38bdf8; text-transform: uppercase; margin-bottom: 5px;">
+        5 Deployment Stations (Dhaka Waterways)
+      </div>
+      <div style="font-size: 10.5px; color: #94a3b8; line-height: 1.5;">
+        📍 Buriganga (Sadarghat) • 📍 Turag (Gabtoli)<br>
+        📍 Shitalakshya (Demra) • 📍 Dhanmondi • 📍 Gulshan
+      </div>
+    </div>
+  </div>
+
+  <!-- CONNECTOR 1 -->
+  <div class="connector">
+    <div class="pipe-line"></div>
+    <div class="flow-bubble" style="border-color: #38bdf8; color: #38bdf8;">🌐</div>
+    <div class="flow-label">HTTP REST JSON / WiFi</div>
+    <div class="flow-bubble" style="border-color: #4ade80; color: #4ade80;">⚡</div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- COLUMN 2: CLOUD & AI COMPUTATION LAYER -->
+  <!-- ======================================================== -->
+  <div class="layer-col">
+    <div>
+      <div class="layer-header">
+        <div class="layer-label" style="color: #4ade80;">
+          <span>🧠</span> Layer 2: Cloud Backend &amp; AI Engine
+        </div>
+        <span class="layer-badge" style="background: rgba(74, 222, 128, 0.15); color: #4ade80;">FastAPI &amp; ML</span>
+      </div>
+
+      <!-- FastAPI Ingestion Gateway -->
+      <div class="card-box highlight-green">
+        <div class="card-box-header">
+          <span class="card-box-title" style="color: #f0fdf4;">FastAPI Asynchronous Gateway</span>
+          <span style="font-size: 10px; color: #4ade80; font-weight: 700;">Python 3.12 ASGI</span>
+        </div>
+        <div class="card-subtext">
+          • Non-blocking REST Ingestion Endpoints (<code>/api/readings</code>)<br>
+          • Pydantic v2 Schema Validation &amp; API Key Security<br>
+          • Heartbeat Watchdog &amp; Serverless <code>/tmp</code> Storage Fallback
+        </div>
+      </div>
+
+      <!-- Scientific WQI Mathematical Engine -->
+      <div class="card-box highlight-green" style="margin-top: 10px;">
+        <div class="card-box-header">
+          <span class="card-box-title" style="color: #f0fdf4;">Weighted Arithmetic WQI Engine</span>
+          <span style="font-size: 10px; color: #4ade80; font-weight: 700;">WHO / ECR Standards</span>
+        </div>
+        <div class="math-box">
+          WQI = (∑ qi · wi) / (∑ wi)
+        </div>
+        <div class="card-subtext" style="margin-top: 4px;">
+          Weights: <strong>DO (0.25)</strong>, <strong>TDS (0.25)</strong>, <strong>pH (0.22)</strong>, <strong>Turb (0.18)</strong>, <strong>Temp (0.10)</strong>.<br>
+          Tiers: <strong>Good (&le;25)</strong> • <strong>Moderate (26-50)</strong> • <strong>Poor (51-75)</strong> • <strong>Critical (&gt;75)</strong>.
+        </div>
+      </div>
+
+      <!-- DUAL AI ENGINE -->
+      <div class="card-box highlight-purple" style="margin-top: 10px; background: rgba(30, 27, 75, 0.5); border-color: rgba(168, 85, 247, 0.3);">
+        <div class="card-box-header">
+          <span class="card-box-title" style="color: #f5f3ff;">Dual-Engine AI / Machine Learning</span>
+          <span style="font-size: 10px; color: #c084fc; font-weight: 700;">Scikit-Learn</span>
+        </div>
+
+        <!-- Model 1 -->
+        <div style="background: rgba(15, 23, 42, 0.7); padding: 7px 10px; border-radius: 6px; border: 1px solid rgba(168, 85, 247, 0.2); margin-bottom: 7px;">
+          <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; color: #d8b4fe;">
+            <span>🤖 Model 1: Isolation Forest</span>
+            <span style="color: #a855f7;">Anomaly AI</span>
+          </div>
+          <div style="font-size: 10px; color: #cbd5e1; margin-top: 2px;">
+            100 Estimators • 10% Contamination Baseline • Multivariate Real-Time Outlier Scoring • Flags Illegal Chemical / Acid Dumps.
+          </div>
+        </div>
+
+        <!-- Model 2 -->
+        <div style="background: rgba(15, 23, 42, 0.7); padding: 7px 10px; border-radius: 6px; border: 1px solid rgba(168, 85, 247, 0.2);">
+          <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; color: #d8b4fe;">
+            <span>📈 Model 2: Random Forest Regressors</span>
+            <span style="color: #a855f7;">Forecast AI</span>
+          </div>
+          <div style="font-size: 10px; color: #cbd5e1; margin-top: 2px;">
+            Multi-target Regressors • 1-6h Lag Features + 3h Rolling Windows • Predicts 24-Hour WQI &amp; Trajectory with R² &gt; 0.88.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Database Schema -->
+    <div class="card-box" style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(74, 222, 128, 0.25);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+        <span style="font-size: 10.5px; font-weight: 700; color: #4ade80; text-transform: uppercase;">SQLAlchemy Relational Schema (6 Tables)</span>
+        <span style="font-size: 9.5px; color: #94a3b8;">SQLite / Postgres</span>
+      </div>
+      <div class="pill-row">
+        <span class="mini-pill">users</span>
+        <span class="mini-pill">locations</span>
+        <span class="mini-pill">sensor_nodes</span>
+        <span class="mini-pill">sensor_readings</span>
+        <span class="mini-pill">predictions</span>
+        <span class="mini-pill">alerts</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONNECTOR 2 -->
+  <div class="connector">
+    <div class="pipe-line"></div>
+    <div class="flow-bubble" style="border-color: #a855f7; color: #a855f7;">📡</div>
+    <div class="flow-label">WebSockets / JSON Stream</div>
+    <div class="flow-bubble" style="border-color: #fbbf24; color: #fbbf24;">📊</div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- COLUMN 3: PRESENTATION & CLIENT LAYER -->
+  <!-- ======================================================== -->
+  <div class="layer-col">
+    <div>
+      <div class="layer-header">
+        <div class="layer-label" style="color: #fbbf24;">
+          <span>🖥️</span> Layer 3: GIS &amp; Visualization
+        </div>
+        <span class="layer-badge" style="background: rgba(251, 191, 36, 0.15); color: #fbbf24;">SPA Web App</span>
+      </div>
+
+      <!-- Leaflet GIS Map -->
+      <div class="card-box highlight-amber">
+        <div class="card-box-header">
+          <span class="card-box-title" style="color: #fef3c7;">Leaflet.js GIS Mapping Engine</span>
+          <span style="font-size: 10px; color: #fbbf24; font-weight: 700;">GEOSPATIAL</span>
+        </div>
+        <div class="card-subtext">
+          • Interactive Dhaka River Basin Navigation<br>
+          • Color-Coded Dynamic Station Markers (Good/Poor/Critical)<br>
+          • 1-Click Station Telemetry Inspection &amp; Coordinate Centering
+        </div>
+      </div>
+
+      <!-- Telemetry Dials & Chart.js -->
+      <div class="card-box highlight-amber" style="margin-top: 10px;">
+        <div class="card-box-header">
+          <span class="card-box-title" style="color: #fef3c7;">Chart.js Visual Analytics Suite</span>
+          <span style="font-size: 10px; color: #fbbf24; font-weight: 700;">REAL-TIME</span>
+        </div>
+        <div class="card-subtext">
+          • Multi-Axis Parameter Time-Series Curves (24h/7d)<br>
+          • 24-Hour Predictive Trajectory Graph with Forecast Intervals<br>
+          • WHO Potable Water Compliance Radar Chart<br>
+          • Instant Hardware Telemetry Dials (pH, Turbidity, DO, Temp, TDS)
+        </div>
+      </div>
+
+      <!-- Alerts, Controls & Bilingual UX -->
+      <div class="card-box highlight-rose" style="margin-top: 10px;">
+        <div class="card-box-header">
+          <span class="card-box-title" style="color: #ffe4e6;">Alerts &amp; Interactive Controls</span>
+          <span style="font-size: 10px; color: #fb7185; font-weight: 700;">USER CONTROLS</span>
+        </div>
+        <div class="card-subtext">
+          • Instant Audio/Visual Hazard Dispatch Notifications<br>
+          • Interactive Anomaly Simulation Modal (Acid, Sludge, Chemical)<br>
+          • 1-Click Raw Telemetry CSV Report Downloader<br>
+          • Full Bilingual Toggle: English &amp; বাংলা (Bengali)
+        </div>
+      </div>
+    </div>
+
+    <!-- Deployment Host -->
+    <div class="card-box" style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(251, 191, 36, 0.3);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+        <span style="font-size: 10.5px; font-weight: 700; color: #fbbf24; text-transform: uppercase;">Cloud Deployment &amp; CDN</span>
+        <span style="font-size: 9.5px; color: #4ade80; font-weight: 700;">● LIVE IN PRODUCTION</span>
+      </div>
+      <div style="font-size: 10.5px; color: #94a3b8; font-family: 'JetBrains Mono', monospace;">
+        https://project-ai-rust-mu.vercel.app
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <div>
+    <strong>AquaAI: AI-Based Water Quality Monitoring &amp; Pollution Prediction System</strong> | Research &amp; Defense Architecture
+  </div>
+  <div class="footer-links">
+    <span>Author: <strong>Farhad Hosen</strong></span>
+    <span>Evaluation: <strong>Academic Board (5 Faculty Members)</strong></span>
+    <span>Stack: <strong>ESP32 • FastAPI • Scikit-Learn • Leaflet • Vercel</strong></span>
+  </div>
+</div>
+
+</body>
+</html>
